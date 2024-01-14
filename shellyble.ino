@@ -106,7 +106,6 @@ String sSwitch[NDEVICES];
 String sPreSwitch[NDEVICES];
 String sBLEstatus[NDEVICES];
 
-
 //*****************
 //Extract the value
 //*****************
@@ -433,8 +432,8 @@ void loop()
     	    //*************************************
             connectBLE(switch_index);
     	}
-    
-        //************************
+    	
+	//************************
         //Do one switch per loop()
         //************************
         if (++switch_index >= NDEVICES)
@@ -448,7 +447,7 @@ void loop()
 //*************************************
 void connectBLE(int sw)
 {
-    Log.info("BLEConnecting to switch%d!",sw);
+	Log.info("BLEConnecting to switch%d!",sw);
 	peer[sw] = BLE.connect(ShellyAddress[sw]);
     Log.info("BLE to switch%d!",sw);
 	if (peer[sw].connected()) 
