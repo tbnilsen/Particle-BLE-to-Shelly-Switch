@@ -5,8 +5,8 @@
 // Receive plublished message about Switch State Change
 //
 // written by:  Terje B. Nilsen
-// version:     1.3
-// date:        14 JAN 2024
+// version:     1.4
+// date:        15 JAN 2024
 //
 // NOTE: Many thanks to Konstantinos Xynos for showing me how to operate
 //       a BLE link to a Shelly Device. I used and referred to his python code in
@@ -28,7 +28,7 @@
 // 
 // The following Particle cloud function is accessible to minipulate the switches
 //
-// functiona name:              Control
+// function name:              Control
 // string parameters to pass:   switch,operation (Switch number is zero-based)
 //
 // Examples parameters:     0,0  -> Switch[0], turn OFF
@@ -177,7 +177,6 @@ String GetSwitch(char *msg)
     }
     return s;
 }
-
 //********************************
 //Change endianess of passed value
 //********************************
@@ -250,15 +249,25 @@ int TxBLEpacket(BleCharacteristic &pTx, BleCharacteristic &pRx, BleCharacteristi
 //**************************
 int RxBLEpacket(BleCharacteristic &pRx, uint8_t * rxb, int len, int buffersize)
 {
-    int rxlen =0; 
-    //*************************************
-    //Read the message from the BLE buffers
-    //*************************************
+    int rxlen =0;
+    int nb;
+
+    //***********************
+    //Make sure we don't leak
+    //***********************
+    len = min((buffersize-1),len); //Leave room for a NULL 
+    //**********
+    //Read bytes
+    //**********
     do
     {
-        rxlen += pRx.getValue(&rxb[rxlen], len-rxlen);
+        nb = pRx.getValue(&rxb[rxlen], len-rxlen);
+        if (nb > 0)
+        {
+            rxlen += nb;
+        }
     }
-    while ( (rxlen+1) < len && rxlen < buffersize); //On fragmented packets We're off by one each time - maybe a string NULL deficit? This works though
+    while ( nb > 0 ); //Keep reading until no more
     //*************************************************
     //Return number of bytes that device returned to us        
     //*************************************************
@@ -432,8 +441,7 @@ void loop()
     	    //*************************************
             connectBLE(switch_index);
     	}
-    	
-	//************************
+    	//************************
         //Do one switch per loop()
         //************************
         if (++switch_index >= NDEVICES)
@@ -449,21 +457,21 @@ void connectBLE(int sw)
 {
 	Log.info("BLEConnecting to switch%d!",sw);
 	peer[sw] = BLE.connect(ShellyAddress[sw]);
-    Log.info("BLE to switch%d!",sw);
+	Log.info("BLE to switch%d!",sw);
 	if (peer[sw].connected()) 
 	{
-        Log.info("successfully connected switch%d!",sw);
-        peer[sw].getCharacteristicByUUID(peerTxCharacteristic[sw], uuidW);
-        peer[sw].getCharacteristicByUUID(peerRxCharacteristic[sw], uuidRW);
-        peer[sw].getCharacteristicByUUID(peerRxTxCharacteristic[sw], uuidREAD_NOTIFY);
-        sBLEstatus[sw] = "CONNCTD";
-    }
+		Log.info("successfully connected switch%d!",sw);
+		peer[sw].getCharacteristicByUUID(peerTxCharacteristic[sw], uuidW);
+		peer[sw].getCharacteristicByUUID(peerRxCharacteristic[sw], uuidRW);
+		peer[sw].getCharacteristicByUUID(peerRxTxCharacteristic[sw], uuidREAD_NOTIFY);
+		sBLEstatus[sw] = "CONNCTD";
+	}
 	else
 	{
-        Log.info("NOT connected (%d)!",sw);
-        sBLEstatus[sw] = "NotConn";
-        //delay(100);
-        //System.reset(RESET_NO_WAIT); //Just like hitting the reset button
+		Log.info("NOT connected (%d)!",sw);
+		sBLEstatus[sw] = "NotConn";
+		//delay(100);
+		//System.reset(RESET_NO_WAIT); //Just like hitting the reset button
 	}
 }
 //**********************************
@@ -529,7 +537,7 @@ int OperateSwitch(String command, int sw)
             state[sw] = 2; //Turn OFF switch
             ret = 0;
         }
-        else if (command=="?") //Query
+        else if (command == "?") //Query
         {
             //**********************
             //Return state of switch
